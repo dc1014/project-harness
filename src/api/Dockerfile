@@ -9,7 +9,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
 
 # Stage 2: Production Image
-FROM python:3.11-slim-bookworm
+FROM python:3.14-slim-bookworm
 WORKDIR /app
 # Copy the environment from the builder
 COPY --from=builder --chown=app:app /app/.venv /app/.venv
