@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import AxeBuilder from "@axe-core/playwright";
+import { expect, test } from "@playwright/test";
 
 // test.describe('Accessibility (WCAG) Audits', () => {
 //   test('The Webhook Settings page should have zero a11y violations', async ({ page }) => {

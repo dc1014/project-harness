@@ -27,8 +27,8 @@ export const content = {
       title: "Connect Discord Alerts",
       description: "Send workflow alerts to the Discord channel your team already uses.",
       success: "Discord webhook saved. Alerts will use this channel.",
-    }
-  }
+    },
+  },
 } as const;
 
 export type ContentDictionary = typeof content;
