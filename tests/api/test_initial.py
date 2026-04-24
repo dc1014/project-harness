@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from orchestrator import (
     BASE_DIR,
+    PROVIDERS,
     assemble_context,
     check_human_pause,
     execute_autonomous_actions,
@@ -83,7 +84,6 @@ def test_extract_section(tmp_path):
     test_file = tmp_path / "doc.md"
     test_file.write_text("## Section\nContent here.\n## Next Section\nIgnore.", encoding="utf-8")
 
-    # FIX: The orchestrator intentionally keeps the header attached for the AI's context
     assert extract_section(str(test_file), "Section") == "## Section\nContent here."
     assert "not found" in extract_section(str(test_file), "Missing Section")
 
@@ -111,7 +111,6 @@ def test_assemble_context():
 # --- 4. AI SANDBOX & SECURITY TESTS ---
 def test_is_path_safe():
     """Ensure the File I/O Sandbox correctly allows and blocks specific paths."""
-    # Valid sandboxed locations
     assert is_path_safe(os.path.join(BASE_DIR, "src", "web", "main.tsx")) is True
     assert is_path_safe(os.path.join(BASE_DIR, "tests", "api", "test_new.py")) is True
 
@@ -126,7 +125,6 @@ def test_is_path_safe():
 
 def test_run_shell_command_security():
     """Ensure the shell command utility blocks unauthorized tools and shell injection."""
-    # Block unauthorized base commands
     assert "not allowed" in run_shell_command("rm -rf /")
     assert "not allowed" in run_shell_command("cat .env")
 
@@ -138,14 +136,11 @@ def test_run_shell_command_security():
 
 def test_execute_autonomous_actions():
     """Ensure the JSON Action parser safely extracts and runs tools, or rejects bad input."""
-    # 1. Ignore normal text without JSON block
     assert execute_autonomous_actions("I am thinking about the problem.") is None
 
-    # 2. Catch Malformed JSON (using implicit string concatenation to avoid linter errors)
     bad_json = "```json\n{ invalid: json }\n```"
     assert "failed to parse" in execute_autonomous_actions(bad_json)
 
-    # 3. Test valid JSON but ensure the Sandbox intercepts malicious actions
     malicious_json = (
         "```json\n"
         '{"write_files": [{"path": ".env", "content": "HACKED"}], '
@@ -154,5 +149,39 @@ def test_execute_autonomous_actions():
     )
     result = execute_autonomous_actions(malicious_json)
 
-    assert "Permission denied" in result  # write_file Sandbox block
-    assert "strictly prohibited" in result  # run_shell_command Sandbox block
+    assert "Permission denied" in result
+    assert "strictly prohibited" in result
+
+
+# --- 5. PROVIDER CONFIG TESTS (COVERAGE BOOSTER) ---
+def test_providers_lambdas():
+    """Ensures the data-transformation lambdas in PROVIDERS work without hitting the network."""
+
+    # 1. Anthropic Configuration
+    anthropic = PROVIDERS["anthropic"]
+    assert anthropic["headers"]("fake-key")["x-api-key"] == "fake-key"
+    body_a = anthropic["body"]("model-a", "system-prompt", "user-prompt")
+    assert body_a["system"][0]["text"] == "system-prompt"
+    assert "ephemeral" in body_a["system"][0]["cache_control"]["type"]
+    assert anthropic["extract"]({"content": [{"text": "hello"}]}) == "hello"
+
+    # Verify cached token telemetry calculation
+    token_usage_a = {
+        "usage": {"input_tokens": 10, "cache_read_input_tokens": 5, "output_tokens": 2}
+    }
+    assert anthropic["tokens"](token_usage_a) == (15, 2)
+
+    # 2. OpenAI Configuration
+    openai = PROVIDERS["openai"]
+    assert openai["headers"]("fake-key")["Authorization"] == "Bearer fake-key"
+    body_o = openai["body"]("model-o", "sys", "usr")
+    assert body_o["messages"][0]["content"] == "sys"
+    assert openai["extract"]({"choices": [{"message": {"content": "hello"}}]}) == "hello"
+
+    token_usage_o = {"usage": {"prompt_tokens": 10, "completion_tokens": 2}}
+    assert openai["tokens"](token_usage_o) == (10, 2)
+
+    # 3. OpenRouter Configuration
+    openrouter = PROVIDERS["openrouter"]
+    assert openrouter["headers"]("fake-key")["Authorization"] == "Bearer fake-key"
+    assert openrouter["extract"]({"choices": [{"message": {"content": "hello"}}]}) == "hello"
