@@ -1,14 +1,7 @@
 {
   "$schema": "https://biomejs.dev/schemas/1.6.0/schema.json",
   "files": {
-    "ignore": [
-      ".venv",
-      "node_modules",
-      "dist",
-      "build",
-      "coverage",
-      "public"
-    ]
+    "ignore": [".venv", "node_modules", "dist", "build", "coverage", "public"]
   },
   "organizeImports": { "enabled": true },
   "linter": { "enabled": true, "rules": { "recommended": true } },
