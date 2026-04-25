@@ -145,7 +145,9 @@ class LLMClient:
             elif provider == "anthropic":
                 model = "claude-3-5-sonnet-latest"
             else:
-                model = "anthropic/claude-3.5-sonnet"
+                # --- ZERO-COST TRACER BULLET FIX ---
+                # Replaced "anthropic/claude-3.5-sonnet" with a 100% free model
+                model = "meta-llama/llama-3.3-70b-instruct:free"
 
         if provider not in PROVIDERS:
             print(f"❌ ERROR: Provider '{provider}' is not configured in PROVIDERS dict.")
