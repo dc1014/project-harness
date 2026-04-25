@@ -316,7 +316,8 @@ def run_shell_command(command):
             cwd=BASE_DIR,
             capture_output=True,
             text=True,
-            timeout=60,  # Prevent infinite hangs if tests freeze
+            encoding="utf-8",
+            timeout=60,
         )
 
         output = result.stdout if result.returncode == 0 else result.stderr
