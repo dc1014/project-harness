@@ -479,6 +479,7 @@ def assemble_context(agent_name):
     # Define dynamic paths
     contracts_dir = os.path.join(DOCS_DIR, "product", "contracts")
     public_dir = os.path.join(BASE_DIR, "public")
+    ui_components_dir = os.path.join(BASE_DIR, "src", "web", "components", "ui")
 
     if "Strategy" in agent_name:
         context += read_file(os.path.join(DOCS_DIR, "company", "thesis.md"))
@@ -518,6 +519,7 @@ def assemble_context(agent_name):
             context += f"\n--- FILE: {fname} ---\n{fcontent}\n"
 
         context += f"\n\n--- PUBLIC ASSETS ---\n{list_directory(public_dir)}"
+        context += f"\n\n--- AVAILABLE UI COMPONENTS ---\n{list_directory(ui_components_dir)}"
 
         blueprint = read_file(os.path.join(DOCS_DIR, "templates", "design_blueprint.md"))
         context += f"\n\n--- OUTPUT TEMPLATE ---\n{blueprint}"
@@ -538,6 +540,7 @@ def assemble_context(agent_name):
             context += f"\n--- FILE: {fname} ---\n{fcontent}\n"
 
         context += f"\n\n--- PUBLIC ASSETS ---\n{list_directory(public_dir)}"
+        context += f"\n\n--- AVAILABLE UI COMPONENTS ---\n{list_directory(ui_components_dir)}"
 
         teardown = read_file(os.path.join(DOCS_DIR, "templates", "teardown_manifest.md"))
         context += f"\n\n--- TEARDOWN TEMPLATE ---\n{teardown}"
