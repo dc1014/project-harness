@@ -11,8 +11,8 @@ export default defineConfig({
     },
   },
   test: {
-    globals: true,                  // <-- ADDED: Makes describe, test, and expect global
-    setupFiles: "./tests/setup.ts", // <-- ADDED: Automatically injects jest-dom matchers
+    globals: true,
+    setupFiles: "./tests/setup.ts",
     include: ["tests/web/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
     environment: "happy-dom",
   },
