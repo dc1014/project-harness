@@ -14,6 +14,24 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DOCS_DIR = os.path.join(BASE_DIR, "docs")
 SKILLS_DIR = os.path.join(BASE_DIR, "skills")
 
+# --- PRE-FLIGHT BOOT CHECK ---
+# Ensures users have installed dependencies before the OS tries to run automated tests
+def check_dependencies():
+    missing = []
+    if not os.path.exists(os.path.join(BASE_DIR, "node_modules")):
+        missing.append("npm install")
+    if not os.path.exists(os.path.join(BASE_DIR, ".venv")):
+        missing.append("uv sync")
+        
+    if missing:
+        print("🛑 OS BOOT FAILED: Missing dependencies.")
+        print("Please run the following commands before starting the OS:")
+        for cmd in missing:
+            print(f"  $ {cmd}")
+        sys.exit(1)
+
+check_dependencies()
+
 # --- ENVIRONMENT & SECRETS ---
 try:
     from dotenv import load_dotenv
