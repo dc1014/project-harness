@@ -422,7 +422,7 @@ def assemble_context(agent_name):
         context += read_file(os.path.join(DOCS_DIR, "product", "style_guide.md"))
         context += read_file(os.path.join(BASE_DIR, "src", "web", "lib", "content.ts"))
 
-        # FIX: Give Design the actual Briefs and Contracts!
+        # Give Design the actual Briefs and Contracts!
         context += f"\n\n--- FEATURE BRIEFS ---\n{read_directory_contents(briefs_dir)}"
         context += f"\n\n--- DATA CONTRACTS ---\n{read_directory_contents(contracts_dir)}"
         context += f"\n\n--- PUBLIC ASSETS ---\n{list_directory(public_dir)}"
@@ -438,7 +438,7 @@ def assemble_context(agent_name):
         context += read_file(os.path.join(DOCS_DIR, "product", "style_guide.md"))
         context += read_file(os.path.join(BASE_DIR, "src", "web", "lib", "content.ts"))
 
-        # FIX: Give Engineering the actual Briefs and Contracts!
+        # Give Engineering the actual Briefs and Contracts!
         context += f"\n\n--- FEATURE BRIEFS ---\n{read_directory_contents(briefs_dir)}"
         context += f"\n\n--- DATA CONTRACTS ---\n{read_directory_contents(contracts_dir)}"
         context += f"\n\n--- PUBLIC ASSETS ---\n{list_directory(public_dir)}"
