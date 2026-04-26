@@ -1,29 +1,29 @@
-## 🚀 Feature / Fix Summary
-[Briefly describe what this PR accomplishes.]
+## 🤖 AI & Feature Summary
+- **Agent Chain:** (e.g., Strategy -> Spec -> Engineering)
+- **Feature/Fix:** [Briefly describe what this PR accomplishes]
 
 ## 🔗 Artifact Links
 - **Brief:** [Link to `docs/product/briefs/...`]
 - **Contract:** [Link to `docs/product/contracts/...`]
+- **ADR Accepted:** [Link to `docs/product/adr/...`] or [N/A]
 
-## 🏗️ Architectural Impact
-- [ ] No structural changes.
-- [ ] ADR Accepted: [Link to `docs/product/adr/...`]
+## 🔒 CEO Security & Architecture Audit
+- [ ] **No Secret Leaks:** Verified ZERO API keys or PII are hardcoded. `pre-commit` secret scan passed.
+- [ ] **Dependency Audit:** The AI did not hallucinate or add unapproved libraries to `package.json` or `pyproject.toml`.
+- [ ] **Database Safety:** Migrations are verified. No destructive actions (`DROP TABLE`, `DELETE FROM` without `WHERE`) were executed without explicit approval.
+- [ ] **Environment:** New environment variables updated in `.env.example` and target PaaS.
 
-## 🧪 Pre-Flight & Verification Checklist
-- [ ] `pre-commit` hook passed locally (Secret Scan, Ruff, Biome).
-- [ ] Backend tests passed (`pytest`).
-- [ ] Frontend tests passed (`Vitest` / E2E).
-- [ ] **Accessibility tests passed (`@axe-core/playwright`).**
-- [ ] ZERO raw secrets or API keys hardcoded.
-- [ ] Telemetry events added to schema (if applicable).
-- [ ] Visual placeholders used (No raw hallucinated SVGs).
-- [ ] Environment variables updated in `.env.example` and target PaaS.
-
-## ⚠️ Rollout Notes
-- [ ] Database migrations generated and verified (if applicable).
-- [ ] Feature flags or routing rules configured (if applicable).
-- Additional Notes: [Any manual steps required during deployment?]
+## 🧪 Verifiability & Zero-Debt Checklist
+- [ ] **Hook Passed:** Local `pre-commit` passed (Ruff, Biome).
+- [ ] **Tests Green:** Backend (`pytest`) and Frontend (`Vitest` / E2E) tests are passing.
+- [ ] **Accessibility:** A11y tests passed (`@axe-core/playwright`).
+- [ ] **Component RAG:** Used existing `shadcn` components. Visual placeholders used (no raw hallucinated SVGs).
+- [ ] **Non-Destructive Logging:** Tracking databases (`experiment_log.md`) were *appended* to, not overwritten.
+- [ ] **Telemetry:** Events added to schema (if applicable).
 
 ## 🗑️ Teardown (If Applicable)
 - [ ] Dead code, unused UI components, and obsolete tests deleted.
 - [ ] Dead telemetry events removed.
+
+## 📝 Operator Notes & Friction
+*Did the AI get stuck or hallucinate? Add observations here, and remember to update `docs/company/lessons_learned.md` before the next run.*
