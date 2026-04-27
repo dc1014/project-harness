@@ -39,7 +39,7 @@ fi
 # 3. RUN TESTS
 echo "🧪 Running Test Suite..."
 uv run pytest || { echo "❌ ERROR: Python tests failed. The Engineering Agent introduced a regression."; exit 1; }
-npx vitest run --passWithNoTests || { echo "❌ ERROR: JS/TS tests failed. The Engineering Agent introduced a regression."; exit 1; }
+npx vitest run || { echo "❌ ERROR: JS/TS tests failed. The Engineering Agent introduced a regression."; exit 1; }
 
 echo "✅ All checks passed. Committing safely."
 exit 0
