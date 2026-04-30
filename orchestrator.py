@@ -4,6 +4,8 @@ import re
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 # --- ABSOLUTE PATH RESOLUTION ---
@@ -58,28 +60,79 @@ def log_token_usage(agent, provider, model, p_tokens, c_tokens, elapsed):
 
 
 # --- API CLIENT ---
+PROVIDERS = {
+    "anthropic": {
+        "url": "https://api.anthropic.com/v1/messages",
+        "headers": lambda key: {
+            "x-api-key": key,
+            "anthropic-version": "2023-06-01",
+            "anthropic-beta": "prompt-caching-2024-07-31",
+            "content-type": "application/json",
+        },
+        "body": lambda model, system, user: {
+            "model": model,
+            "max_tokens": 4096,
+            "temperature": 0.2,
+            "system": [
+                {
+                    "type": "text",
+                    "text": system,
+                    "cache_control": {"type": "ephemeral"},  # Native Prompt Caching
+                }
+            ],
+            "messages": [{"role": "user", "content": user}],
+        },
+        "extract": lambda r: r["content"][0]["text"],
+        # Combine standard tokens with cached tokens so telemetry remains accurate
+        "tokens": lambda r: (
+            r["usage"].get("input_tokens", 0) + r["usage"].get("cache_read_input_tokens", 0),
+            r["usage"].get("output_tokens", 0),
+        ),
+    },
+    "openai": {
+        "url": "https://api.openai.com/v1/chat/completions",
+        "headers": lambda key: {
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+        },
+        "body": lambda model, system, user: {
+            "model": model,
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+        },
+        "extract": lambda r: r["choices"][0]["message"]["content"],
+        "tokens": lambda r: (
+            r["usage"].get("prompt_tokens", 0),
+            r["usage"].get("completion_tokens", 0),
+        ),
+    },
+    "openrouter": {
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "headers": lambda key: {
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "http://localhost",
+            "X-Title": "Solopreneur OS",
+        },
+        "body": lambda model, system, user: {
+            "model": model,
+            "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+        },
+        "extract": lambda r: r["choices"][0]["message"]["content"],
+        "tokens": lambda r: (
+            r["usage"].get("prompt_tokens", 0),
+            r["usage"].get("completion_tokens", 0),
+        ),
+    },
+}
+
+
 class LLMClient:
     def __init__(self):
-        self.clients = {}
-        if os.environ.get("OPENAI_API_KEY"):
-            try:
-                from openai import OpenAI
-
-                self.clients["openai"] = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-            except ImportError:
-                print("❌ ERROR: openai package not found.")
-                sys.exit(1)
-
-        if os.environ.get("ANTHROPIC_API_KEY"):
-            try:
-                import anthropic
-
-                self.clients["anthropic"] = anthropic.Anthropic(
-                    api_key=os.environ.get("ANTHROPIC_API_KEY")
-                )
-            except ImportError:
-                print("❌ ERROR: anthropic package not found.")
-                sys.exit(1)
+        self.keys = {
+            "openai": os.environ.get("OPENAI_API_KEY"),
+            "anthropic": os.environ.get("ANTHROPIC_API_KEY"),
+            "openrouter": os.environ.get("OPENROUTER_API_KEY"),
+        }
 
     def call(self, agent_name, system_prompt, user_prompt):
         if SMART_ROUTING and agent_name in MODEL_MAP:
@@ -87,54 +140,76 @@ class LLMClient:
             model = MODEL_MAP[agent_name]["model"]
         else:
             provider = DEFAULT_PROVIDER
-            model = "gpt-4o" if provider == "openai" else "claude-sonnet-4-5"
+            if provider == "openai":
+                model = "gpt-4o"
+            elif provider == "anthropic":
+                model = "claude-3-5-sonnet-latest"
+            else:
+                model = "anthropic/claude-3.5-sonnet"
 
-        if provider not in self.clients:
-            print(f"❌ ERROR: API key for {provider} not found. Cannot route {agent_name}.")
+        if provider not in PROVIDERS:
+            print(f"❌ ERROR: Provider '{provider}' is not configured in PROVIDERS dict.")
             sys.exit(1)
 
+        api_key = self.keys.get(provider)
+        if not api_key:
+            print(f"❌ ERROR: API key for {provider} not found in .env.")
+            sys.exit(1)
+
+        config = PROVIDERS[provider]
         max_retries = 3
+
         for attempt in range(max_retries):
             try:
                 start_time = time.time()
 
-                if provider == "openai":
-                    response = self.clients["openai"].chat.completions.create(
-                        model=model,
-                        messages=[
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_prompt},
-                        ],
-                    )
-                    text = response.choices[0].message.content
-                    p_tokens = response.usage.prompt_tokens
-                    c_tokens = response.usage.completion_tokens
+                req = urllib.request.Request(  # noqa: S310
+                    config["url"],
+                    data=json.dumps(config["body"](model, system_prompt, user_prompt)).encode(
+                        "utf-8"
+                    ),
+                    headers=config["headers"](api_key),
+                    method="POST",
+                )
 
-                elif provider == "anthropic":
-                    response = self.clients["anthropic"].messages.create(
-                        model=model,
-                        max_tokens=4096,
-                        temperature=0.2,
-                        system=system_prompt,
-                        messages=[{"role": "user", "content": user_prompt}],
-                    )
-                    text = response.content[0].text
-                    p_tokens = response.usage.input_tokens
-                    c_tokens = response.usage.output_tokens
+                with urllib.request.urlopen(req, timeout=120) as response:  # noqa: S310
+                    result = json.loads(response.read().decode("utf-8"))
+                    text = config["extract"](result)
+                    p_tokens, c_tokens = config["tokens"](result)
 
                 elapsed = time.time() - start_time
                 log_token_usage(agent_name, provider, model, p_tokens, c_tokens, elapsed)
 
                 return text
 
+            except urllib.error.HTTPError as e:
+                error_body = e.read().decode("utf-8") if e.fp else str(e)
+                if attempt == max_retries - 1:
+                    print(
+                        f"\n❌ API FATAL ERROR ({provider} - {model}): HTTP {e.code} - {error_body}"
+                    )
+                    sys.exit(1)
+
+                sleep_time = 2 ** (attempt + 1)
+                print(f"\n⚠️ API Interruption ({provider}): HTTP {e.code} - {error_body}")
+                print(
+                    f"🔄 Retrying in {sleep_time} seconds (Attempt {attempt + 1}/{max_retries})..."
+                )
+                time.sleep(sleep_time)
+
             except Exception as e:
                 if attempt == max_retries - 1:
-                    print(f"\n❌ API ERROR ({provider}-{model}) after {max_retries} attempts: {e}")
+                    print(
+                        f"\n❌ API FATAL ERROR ({provider} - {model}) "
+                        f"after {max_retries} attempts: {e}"
+                    )
                     sys.exit(1)
 
                 sleep_time = 2 ** (attempt + 1)
                 print(f"\n⚠️ API Interruption ({provider}): {e}")
-                print(f"🔄 Retrying in {sleep_time}s (Attempt {attempt + 1}/{max_retries}).")
+                print(
+                    f"🔄 Retrying in {sleep_time} seconds (Attempt {attempt + 1}/{max_retries})..."
+                )
                 time.sleep(sleep_time)
 
 
@@ -317,6 +392,9 @@ def assemble_context(agent_name):
         public_dir = os.path.join(BASE_DIR, "public")
         context += f"\n\n--- PUBLIC ASSETS ---\n{list_directory(public_dir)}"
 
+        teardown = read_file(os.path.join(DOCS_DIR, "templates", "teardown_manifest.md"))
+        context += f"\n\n--- TEARDOWN TEMPLATE ---\n{teardown}"
+
     elif "Ops" in agent_name:
         context += read_file(os.path.join(DOCS_DIR, "product", "current_run.md"))
         context += read_file(os.path.join(DOCS_DIR, "ops", "launch_checklist.md"))
@@ -379,7 +457,10 @@ def execute_autonomous_actions(response_text):
         return "\n\n".join(execution_logs)
 
     except json.JSONDecodeError:
-        return "[ERROR: The OS failed to parse JSON action block. Must be perfectly formatted.]"
+        return (
+            "[ERROR: The OS failed to parse your JSON action block. "
+            "Ensure it is perfectly formatted.]"
+        )
     except Exception as e:
         return f"[ERROR: OS Execution failed - {e}]"
 
@@ -430,20 +511,25 @@ def run_os(user_input, flags=None):
         }
 
         skill_file = skill_file_map.get(base_skill, "engineering.xml")
-        system_prompt = read_file(os.path.join(SKILLS_DIR, skill_file))
+        skill_prompt = read_file(os.path.join(SKILLS_DIR, skill_file))
 
         print(f"\n[🚀 Waking up {current_agent} Agent...]")
 
-        payload = f"CONTEXT:\n{assemble_context(base_skill)}\n\nTASK:\n{current_prompt}"
+        # Combine the Skill XML and the Context into a single System Prompt for maximum caching
+        full_system_prompt = f"{skill_prompt}\n\nCONTEXT:\n{assemble_context(base_skill)}"
+        user_task = f"TASK:\n{current_prompt}"
 
         if verbose:
-            print(f"🔎 [VERBOSE]: Sending {len(payload)} chars of context to {current_agent}...")
-            print(f"--- PAYLOAD START ---\n{payload}\n--- PAYLOAD END ---")
+            print(
+                f"🔎 [VERBOSE]: Sending {len(full_system_prompt)} chars of "
+                f"cached system context to {current_agent}..."
+            )
+            print(f"--- USER TASK ---\n{user_task}\n-----------------")
 
         response = llm.call(
             base_skill,
-            system_prompt,
-            payload,
+            full_system_prompt,
+            user_task,
         )
 
         if verbose:
@@ -461,7 +547,10 @@ def run_os(user_input, flags=None):
             if "FAIL" in action_results or "Error" in action_results or "error" in action_results:
                 print("⚠️ Tests failed! Routing back to Engineering for an autonomous fix...")
                 agent_queue.insert(0, "Engineering")
-                current_prompt = f"Changes caused failures.\n\nTEST OUTPUT:\n{action_results}"
+                current_prompt = (
+                    "Your previous code changes caused test failures. Fix them.\n\n"
+                    f"TEST OUTPUT:\n{action_results}"
+                )
                 continue  # Skip the routing queue and immediately re-run the agent
 
         # ---------------------------------
