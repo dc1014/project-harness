@@ -307,9 +307,9 @@ def run_shell_command(command: str) -> str:
             args, 
             capture_output=True, 
             text=True,
-            encoding="utf-8" 
+            encoding="utf-8", 
             timeout=60, 
-            shell=False
+            shell=False,
         )
 
         output = result.stdout.strip()
