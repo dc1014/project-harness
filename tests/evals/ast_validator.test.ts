@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { describe, expect, test, beforeAll, afterAll } from "vitest";
+import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 describe("AST Validator (Layer 1 Eval)", () => {
   const testDir = path.join(__dirname, "temp_ast_test");
@@ -20,9 +20,7 @@ describe("AST Validator (Layer 1 Eval)", () => {
     const filepath = path.join(testDir, "BadStyle.tsx");
     fs.writeFileSync(filepath, badCode);
 
-    expect(() =>
-      execSync(`node scripts/ast_validator.mjs ${filepath}`),
-    ).toThrow();
+    expect(() => execSync(`node scripts/ast_validator.mjs ${filepath}`)).toThrow();
   });
 
   test("Passes with clean Tailwind and accessible images", () => {
@@ -31,8 +29,6 @@ describe("AST Validator (Layer 1 Eval)", () => {
     const filepath = path.join(testDir, "GoodComponent.tsx");
     fs.writeFileSync(filepath, goodCode);
 
-    expect(() =>
-      execSync(`node scripts/ast_validator.mjs ${filepath}`),
-    ).not.toThrow();
+    expect(() => execSync(`node scripts/ast_validator.mjs ${filepath}`)).not.toThrow();
   });
 });
