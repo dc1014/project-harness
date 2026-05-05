@@ -547,7 +547,8 @@ def auto_lint_file(filepath):
             args[0] = executable
 
     try:
-        result = subprocess.run(
+        # noqa: S603 tells the linter we explicitly control the args array
+        result = subprocess.run(  # noqa: S603
             args,
             capture_output=True,
             text=True,
@@ -556,7 +557,12 @@ def auto_lint_file(filepath):
             shell=False
         )
         if result.returncode != 0:
-            return f"[⚠️ AUTO-LINT FAILED on {filepath}]:\n{result.stdout}\n{result.stderr}\nFix this syntax error before proceeding."
+            # Wrap the long string in parentheses to comply with the 100-char limit
+            return (
+                f"[⚠️ AUTO-LINT FAILED on {filepath}]:\n"
+                f"{result.stdout}\n{result.stderr}\n"
+                "Fix this syntax error before proceeding."
+            )
         return f"[✅ AUTO-LINT PASSED for {filepath}]"
     except Exception as e:
         return f"[⚠️ AUTO-LINT EXECUTION ERROR on {filepath}]: {e}"
