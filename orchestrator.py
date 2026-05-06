@@ -268,7 +268,7 @@ def append_file(filepath, content):
         # Check if the file currently exists and ensure it ends with a newline
         prefix = ""
         if os.path.exists(abs_path):
-            with open(abs_path, "r", encoding="utf-8") as f:
+            with open(abs_path, encoding="utf-8") as f:
                 current_content = f.read()
                 if current_content and not current_content.endswith("\n"):
                     prefix = "\n"
