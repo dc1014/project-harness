@@ -2,7 +2,8 @@ import os
 
 import pytest
 
-from orchestrator import LLMClient, assemble_context, read_file
+# Added extract_routing_queue to explicitly test the AI's routing decisions
+from orchestrator import LLMClient, assemble_context, extract_routing_queue, read_file
 
 
 @pytest.fixture(scope="module")
@@ -21,7 +22,9 @@ def test_strategy_rejects_out_of_scope_ideas(client):
 
     response = client.call("Strategy", system_prompt, user_prompt)
 
-    assert "ROUTING: [None]" in response, "FAILED: Strategy failed to halt the pipeline."
+    # HIGH-SIGNAL ASSERTION: The queue must be explicitly empty
+    queue = extract_routing_queue(response)
+    assert queue == [], f"Expected empty routing queue for rejected idea, got {queue}"
     assert "write_files" not in response, "FAILED: Strategy tried to write a rejected idea."
 
 
@@ -38,6 +41,6 @@ def test_strategy_accepts_valid_b2b_ideas(client):
 
     response = client.call("Strategy", system_prompt, user_prompt)
 
-    err_msg = "FAILED: Strategy failed to route a valid idea to Product Spec."
-    assert "ROUTING: [Product Spec]" in response, err_msg
-    assert "http://googleusercontent.com/immersive_entry_chip/0"
+    # HIGH-SIGNAL ASSERTION: The queue must explicitly route to Product Spec
+    queue = extract_routing_queue(response)
+    assert queue and queue[0] == "Product Spec", f"FAIL: Should route to Product Spec, got {queue}"
