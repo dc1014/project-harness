@@ -10,6 +10,11 @@ from pathlib import Path
 
 import litellm
 
+# --- SHIFT-LEFT: CROSS-PLATFORM ENCODING FIX ---
+# Forces Windows terminals to support UTF-8 emojis without crashing
+if sys.stdout.encoding.lower() != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8")
+
 # SHIFT-LEFT: Explicit whitelist of allowed command prefixes
 ALLOWED_COMMANDS = (
     "npm run ",
